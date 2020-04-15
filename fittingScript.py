@@ -256,7 +256,7 @@ class TwoPeaksFit(FittingSlaven):
                     else:
                         model = peak + background
                 else:
-                    if init_values_dict['center2'] in pars:
+                    if init_values_dict['center2']:
                         model = peak2 + background
 
                 out = model.fit(y, pars, x=measur['x'])
@@ -286,7 +286,7 @@ class TwoPeaksFit(FittingSlaven):
                     curr_plot+=1
                     plt.plot(measur['x'], (y), 'b')
                     plt.yticks([])
-                    plt.text(measur['x'][0], max(measur['y']), curr_plot, horizontalalignment='left', verticalalignment='top')
+                    plt.text(measur['x'][0], max(y), curr_plot, horizontalalignment='left', verticalalignment='top')
                     plt.xticks([])
                     plt.plot(measur['x'], (out.init_fit), 'k--', label='initial fit')
                     plt.plot(measur['x'], (out.best_fit), 'r-', label='best fit')
@@ -385,9 +385,6 @@ class TwoPeaksFit(FittingSlaven):
             #save init params for the next one based on threshold
             self.update_init_params_and_save_data(initParamDict, out, measurment['t'], self.threshold, i)
 
-            ## also save as dictionary for the use in full fitting
-            self.init_params_per_temp.append(initParamDict.copy())
-
             #for ploting the results
             if plotData:
                 columns = 7
@@ -439,6 +436,20 @@ class TwoPeaksFit(FittingSlaven):
             out.params.get('l2_fwhm').value if 'l2_fwhm' in out.params else None,   out.params.get('l2_fwhm').stderr if'l2_fwhm'  in out.params else None,
             out.params.get('l2_height').value/self.cf if 'l2_height' in out.params else None, out.params.get('l2_height').stderr/self.cf if'l2_height'  in out.params else None,
             ])
+        
+        saveParamDict = initParamDict.copy()
+
+        saveParamDict['bg'] = out.best_values.get('bg_c',0 )
+        saveParamDict['center'] = out.best_values.get('l1_center',0 )
+        saveParamDict['sigma'] = out.best_values.get('l1_sigma', 0 )
+        saveParamDict['amplitude'] = out.best_values.get('l1_amplitude', 0 )
+        saveParamDict['center2'] = out.best_values.get('l2_center', 0 )
+        saveParamDict['sigma2'] = out.best_values.get('l2_sigma', 0 )
+        saveParamDict['amplitude2'] = out.best_values.get('l2_amplitude', 0 )
+        saveParamDict['split'] = out.params.get('split').value if 'split' in out.params else 0
+        
+        self.init_params_per_temp.append(saveParamDict)
+
 
         initParamDict['bg'] = out.best_values.get('bg_c', initParamDict['bg'] )
         initParamDict['center'] = out.best_values.get('l1_center', initParamDict['center'] )
@@ -448,7 +459,7 @@ class TwoPeaksFit(FittingSlaven):
         initParamDict['sigma2'] = out.best_values.get('l2_sigma', initParamDict['sigma2'] )
         initParamDict['amplitude2'] = out.best_values.get('l2_amplitude', initParamDict['amplitude2'] )
         initParamDict['split'] = out.params.get('split').value if 'split' in out.params else initParamDict['split']
-    
+
 # f2 = "V:/20200312/125553_spectrum_vs_freq_and_temperature/125553_spectrum_vs_freq_and_temperature.dat"
 # f3 = "V:/20200314/113944_spectrum_vs_freq_and_temperature/113944_spectrum_vs_freq_and_temperature.dat"
 # ff = 'Q:/20200310/104139_drivingAmpl_vs_Spectrum/104139_drivingAmpl_vs_Spectrum.dat'

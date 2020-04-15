@@ -223,62 +223,57 @@ class TwoPeaksFit(FittingSlaven):
                     prev_temp = curr_temp
                     init_values_dict = next(init_iterator, self.init_params_per_temp[-1])
 
-                twoPeaks = True if init_values_dict['sigma2'] else False
-
                 background = ConstantModel(prefix='bg_')
                 pars = background.make_params()
+                pars['bg_c'].set(value = init_values_dict['bg'], min=0)
 
-                peak = LorentzianModel(prefix='l1_')
-                pars.update(peak.make_params())
                 
-                if twoPeaks:
+                if init_values_dict['center']:
+                    peak = LorentzianModel(prefix='l1_')
+                    pars.update(peak.make_params())
+                    pars['l1_center'].set(value=init_values_dict['center'], min=0)
+                    pars['l1_sigma'].set(value=init_values_dict['sigma'], min=0)
+                    pars['l1_amplitude'].set(value=init_values_dict['amplitude'], min=0)
+                
+                if init_values_dict['center2']:
                     peak2 = LorentzianModel(prefix='l2_')
                     pars.update(peak2.make_params())
-                    pars.add(name = 'split', min=0, max=100, vary=True)
-
-
-                pars['bg_c'].set(value = init_values_dict['bg'], min=0)
-                pars['l1_center'].set(value=init_values_dict['center'], min=0)
-                pars['l1_sigma'].set(value=init_values_dict['sigma'], min=0)
-                pars['l1_amplitude'].set(value=init_values_dict['amplitude'], min=0)
-                if twoPeaks:
-                    pars['l2_center'].set(value=init_values_dict['center2'], expr='l1_center+split', min=0)
                     pars['l2_sigma'].set(value=init_values_dict['sigma2'], min=0)
                     pars['l2_amplitude'].set(value=init_values_dict['amplitude2'], min=0)
-                    pars['split'].set(value=init_values_dict['split'], min=0, max=100)
 
-                if twoPeaks:
-                    model = peak + peak2 + background
+                    if init_values_dict['center']:
+                        pars.add(name = 'split', min=0, max=100, vary=True)
+                        pars['split'].set(value=init_values_dict['split'], min=0, max=100)
+                        pars['l2_center'].set(value=init_values_dict['center2'], expr='l1_center+split', min=0)
+                    else:
+                        pars['l2_center'].set(value=init_values_dict['center2'], min=0)
+
+
+                # set model
+                if init_values_dict['center']:
+                    if init_values_dict['center2']:
+                        model = peak + peak2 + background
+                    else:
+                        model = peak + background
                 else:
-                    model = peak + background
+                    if init_values_dict['center2'] in pars:
+                        model = peak2 + background
 
                 out = model.fit(y, pars, x=measur['x'])
 
                 for _, param in out.params.items():
                     if not param.stderr:
                         param.stderr = float('NaN')  
-
-                #important to have the same shape as the 
-                if twoPeaks:
-                    self.results.append([out.best_values['bg_c']/self.cf,
-                        measur['t'],
-                        out.params['l1_center'].value, out.params['l1_center'].stderr,
-                        out.params['l1_fwhm'].value,   out.params['l1_fwhm'].stderr,
-                        out.params['l1_height'].value/self.cf, out.params['l1_height'].stderr/self.cf,
-                        out.params['l2_center'].value, out.params['l2_center'].stderr,
-                        out.params['l2_fwhm'].value,   out.params['l2_fwhm'].stderr,
-                        out.params['l2_height'].value/self.cf, out.params['l2_height'].stderr/self.cf,
-                        ])
-                else:
-                    self.results.append([out.best_values['bg_c']/self.cf,
-                        measur['t'],
-                        out.params['l1_center'].value, out.params['l1_center'].stderr,
-                        out.params['l1_fwhm'].value,   out.params['l1_fwhm'].stderr,
-                        out.params['l1_height'].value/self.cf, out.params['l1_height'].stderr/self.cf,
-                        None, None,
-                        None, None,
-                        None, None,
-                        ])
+                
+                self.results.append([out.best_values['bg_c']/self.cf,
+                    measur['t'],
+                    out.params.get('l1_center').value if 'l1_center' in out.params else None, out.params.get('l1_center').stderr if'l1_center'  in out.params else None,
+                    out.params.get('l1_fwhm').value if 'l1_fwhm' in out.params else None,   out.params.get('l1_fwhm').stderr if'l1_fwhm'  in out.params else None,
+                    out.params.get('l1_height').value/self.cf if 'l1_height' in out.params else None, out.params.get('l1_height').stderr/self.cf if'l1_height'  in out.params else None,
+                    out.params.get('l2_center').value if 'l2_center' in out.params else None, out.params.get('l2_center').stderr if'l2_center'  in out.params else None,
+                    out.params.get('l2_fwhm').value if 'l2_fwhm' in out.params else None,   out.params.get('l2_fwhm').stderr if'l2_fwhm'  in out.params else None,
+                    out.params.get('l2_height').value/self.cf if 'l2_height' in out.params else None, out.params.get('l2_height').stderr/self.cf if'l2_height'  in out.params else None,
+                    ])
                 
                 #for ploting the results
                 if plotData:
@@ -291,6 +286,7 @@ class TwoPeaksFit(FittingSlaven):
                     curr_plot+=1
                     plt.plot(measur['x'], (y), 'b')
                     plt.yticks([])
+                    plt.text(measur['x'][0], max(measur['y']), curr_plot, horizontalalignment='left', verticalalignment='top')
                     plt.xticks([])
                     plt.plot(measur['x'], (out.init_fit), 'k--', label='initial fit')
                     plt.plot(measur['x'], (out.best_fit), 'r-', label='best fit')
@@ -304,9 +300,15 @@ class TwoPeaksFit(FittingSlaven):
 
         self.results= np.array(self.results, dtype=np.float)
     
-    def setInitParam(self, initDict=None, reverse = False, threshold=70, plotData = False, cf=1e14):
+    def setInitParam(self, initDict=None, reverse = False, threshold=None, plotData = False, cf=1e14):
         self.cf = cf
-        self.threshold=threshold
+        
+        self.threshold = {'p1min': 0, 'p1max':len(self.averagedData),
+                            'p2min': 0, 'p2max':len(self.averagedData)}
+        if threshold:
+            self.threshold.update(threshold)
+        
+        
         if plotData:
            plt.figure(figsize=(13,25))
 
@@ -325,16 +327,16 @@ class TwoPeaksFit(FittingSlaven):
         #init dict for two peaks
         if initDict:
             initParamDict = initDict
+            initParamDict['amplitude'] *= self.cf
+            initParamDict['amplitude2'] *= self.cf
         else:
             sigma = (self.averagedData[n]['x'][-1] - self.averagedData[n]['x'][0])/10/2
             spl = 30
             initParamDict = {
                 'bg' : np.median(self.averagedData[n]['y']),
-                # 'center': self.averagedData[n]['x'][len(self.averagedData[n]['x'])//2] - 100,
                 'center': self.averagedData[n]['x'][self.averagedData[n]['y'].index(max(self.averagedData[n]['y']))]-spl,
                 'sigma': sigma,
                 'amplitude': np.pi*sigma*np.max(self.averagedData[n]['y']),
-                # 'center2': self.averagedData[n]['x'][len(self.averagedData[n]['x'])//2],
                 'center2': self.averagedData[n]['x'][self.averagedData[n]['y'].index(max(self.averagedData[n]['y']))],
                 'sigma2': sigma,
                 'amplitude2': np.pi*sigma*np.max(self.averagedData[n]['y']),
@@ -348,21 +350,34 @@ class TwoPeaksFit(FittingSlaven):
 
             background = ConstantModel(prefix='bg_')
             pars = background.make_params()
+            pars['bg_c'].set(value = initParamDict['bg'], min=0)
 
-            peak = LorentzianModel(prefix='l1_')
-            pars.update(peak.make_params())
+            if i>=self.threshold['p1min'] and i<=self.threshold['p1max']:
+                peak = LorentzianModel(prefix='l1_')
+                pars.update(peak.make_params())
+                pars['l1_center'].set(value=initParamDict['center'], min=0)
+                pars['l1_sigma'].set(value=initParamDict['sigma'], min=0)
+                pars['l1_amplitude'].set(value=initParamDict['amplitude'], min=0)
 
-            if i < self.threshold:
+            if i>=self.threshold['p2min'] and i<=self.threshold['p2max']:
                 peak2 = LorentzianModel(prefix='l2_')
                 pars.update(peak2.make_params())
+                pars['l2_sigma'].set(value=initParamDict['sigma2'], min=0)
+                pars['l2_amplitude'].set(value=initParamDict['amplitude2'], min=0)
+                if 'l1_center' in pars:    
+                    pars.add(name = 'split', value=initParamDict['split'], min=0, max=100, vary=True)
+                    pars['l2_center'].set(value=initParamDict['center2'], expr='l1_center+split')
+                else:
+                    pars['l2_center'].set(value=initParamDict['center2'])
 
-            # set initial values for params based on dictionary and threshold
-            self.update_params_values(pars, initParamDict, self.threshold, i)
-
-            if i<self.threshold:
-                model = peak + peak2 + background
+            if 'l1_center' in pars:
+                if 'l2_center' in pars:
+                    model = peak + peak2 + background
+                else:
+                    model = peak + background
             else:
-                model = peak + background
+                if 'l2_center' in pars:
+                    model = peak2 + background
             
             out = model.fit(measurment['y'], pars, x=measurment['x'])
             
@@ -386,6 +401,7 @@ class TwoPeaksFit(FittingSlaven):
                 plt.xticks([])
                 plt.plot(measurment['x'], (out.init_fit), 'k--', label='initial fit')
                 plt.plot(measurment['x'], (out.best_fit), 'r-', label='best fit')
+                plt.text(measurment['x'][0], max(measurment['y']), i+1, horizontalalignment='left', verticalalignment='top')
                 # plt.legend(loc='best')
                 # plt.show()
 
@@ -412,56 +428,47 @@ class TwoPeaksFit(FittingSlaven):
     def update_init_params_and_save_data(self, initParamDict, out, temp, threshold, i):
         for _, param in out.params.items():
             if not param.stderr:
-                param.stderr = float('NaN') 
+                param.stderr = float('NaN')
 
-        if i<threshold:
-            self.results_averaged.append([out.best_values['bg_c']/self.cf,
+        self.results_averaged.append([out.best_values['bg_c']/self.cf,
             temp,
-            out.params['l1_center'].value, out.params['l1_center'].stderr,
-            out.params['l1_fwhm'].value,   out.params['l1_fwhm'].stderr,
-            out.params['l1_height'].value/self.cf, out.params['l1_height'].stderr/self.cf,
-            out.params['l2_center'].value, out.params['l2_center'].stderr,
-            out.params['l2_fwhm'].value,   out.params['l2_fwhm'].stderr,
-            out.params['l2_height'].value/self.cf, out.params['l2_height'].stderr/self.cf,
-            ])
-        else:
-            self.results_averaged.append([out.best_values['bg_c']/self.cf,
-            temp,
-            out.params['l1_center'].value, out.params['l1_center'].stderr,
-            out.params['l1_fwhm'].value,   out.params['l1_fwhm'].stderr,
-            out.params['l1_height'].value/self.cf, out.params['l1_height'].stderr/self.cf,
-            None, None,
-            None, None,
-            None, None,
+            out.params.get('l1_center').value if 'l1_center' in out.params else None, out.params.get('l1_center').stderr if'l1_center'  in out.params else None,
+            out.params.get('l1_fwhm').value if 'l1_fwhm' in out.params else None,   out.params.get('l1_fwhm').stderr if'l1_fwhm'  in out.params else None,
+            out.params.get('l1_height').value/self.cf if 'l1_height' in out.params else None, out.params.get('l1_height').stderr/self.cf if'l1_height'  in out.params else None,
+            out.params.get('l2_center').value if 'l2_center' in out.params else None, out.params.get('l2_center').stderr if'l2_center'  in out.params else None,
+            out.params.get('l2_fwhm').value if 'l2_fwhm' in out.params else None,   out.params.get('l2_fwhm').stderr if'l2_fwhm'  in out.params else None,
+            out.params.get('l2_height').value/self.cf if 'l2_height' in out.params else None, out.params.get('l2_height').stderr/self.cf if'l2_height'  in out.params else None,
             ])
 
-        if i<threshold:
-            initParamDict['bg'] = out.best_values['bg_c']
-            initParamDict['center'] = out.best_values['l1_center']
-            initParamDict['sigma'] = out.best_values['l1_sigma']
-            initParamDict['amplitude'] = out.best_values['l1_amplitude']
-            initParamDict['center2'] = out.best_values['l2_center']
-            initParamDict['sigma2'] = out.best_values['l2_sigma']
-            initParamDict['amplitude2'] = out.best_values['l2_amplitude']
-            initParamDict['split'] = out.params['split'].value
-        else:
-            initParamDict['bg'] = out.best_values['bg_c']
-            initParamDict['center'] = out.best_values['l1_center']
-            initParamDict['sigma'] = out.best_values['l1_sigma']
-            initParamDict['amplitude'] = out.best_values['l1_amplitude']
-            initParamDict['center2'] = 0
-            initParamDict['sigma2'] = 0
-            initParamDict['amplitude2'] = 0
-            initParamDict['split'] = 0
+        initParamDict['bg'] = out.best_values.get('bg_c', initParamDict['bg'] )
+        initParamDict['center'] = out.best_values.get('l1_center', initParamDict['center'] )
+        initParamDict['sigma'] = out.best_values.get('l1_sigma', initParamDict['sigma'] )
+        initParamDict['amplitude'] = out.best_values.get('l1_amplitude', initParamDict['amplitude'] )
+        initParamDict['center2'] = out.best_values.get('l2_center', initParamDict['center2'] )
+        initParamDict['sigma2'] = out.best_values.get('l2_sigma', initParamDict['sigma2'] )
+        initParamDict['amplitude2'] = out.best_values.get('l2_amplitude', initParamDict['amplitude2'] )
+        initParamDict['split'] = out.params.get('split').value if 'split' in out.params else initParamDict['split']
     
 # f2 = "V:/20200312/125553_spectrum_vs_freq_and_temperature/125553_spectrum_vs_freq_and_temperature.dat"
 # f3 = "V:/20200314/113944_spectrum_vs_freq_and_temperature/113944_spectrum_vs_freq_and_temperature.dat"
 # ff = 'Q:/20200310/104139_drivingAmpl_vs_Spectrum/104139_drivingAmpl_vs_Spectrum.dat'
 # f4 = 'V:/20200403/114454_spectrum_vs_freq_and_temperature/114454_spectrum_vs_freq_and_temperature.dat'
 
-th = 70
+th = {'p1min': 10, 'p2max':84}
+
+# initDict = {
+#                 'bg' : np.median(self.averagedData[n]['y']),
+#                 'center': self.averagedData[n]['x'][self.averagedData[n]['y'].index(max(self.averagedData[n]['y']))]-spl,
+#                 'sigma': sigma,
+#                 'amplitude': np.pi*sigma*np.max(self.averagedData[n]['y']),
+#                 'center2': self.averagedData[n]['x'][self.averagedData[n]['y'].index(max(self.averagedData[n]['y']))],
+#                 'sigma2': sigma,
+#                 'amplitude2': np.pi*sigma*np.max(self.averagedData[n]['y']),
+#                 'split': spl,
+#             }
+
 fit = TwoPeaksFit()
-fit.plotData()
-# fit.setInitParam(initDict=None, reverse = None, threshold=th, plotData = True)
-# fit.setModelAndFit(plotData=True)
+# fit.plotData()
+fit.setInitParam(initDict=None, reverse = None, threshold=th, plotData = True)
+fit.setModelAndFit(plotData=True)
 fit.saveData()

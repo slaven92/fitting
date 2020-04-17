@@ -8,7 +8,7 @@ import json
 from scipy.interpolate import griddata
 
 import matplotlib
-matplotlib.use('Qt5Agg')
+# matplotlib.use('Qt5Agg')
 # from scroll import ScrollableWindow
 
 class FittingSlaven:
@@ -460,26 +460,29 @@ class TwoPeaksFit(FittingSlaven):
         initParamDict['amplitude2'] = out.best_values.get('l2_amplitude', initParamDict['amplitude2'] )
         initParamDict['split'] = out.params.get('split').value if 'split' in out.params else initParamDict['split']
 
-# f2 = "V:/20200312/125553_spectrum_vs_freq_and_temperature/125553_spectrum_vs_freq_and_temperature.dat"
-# f3 = "V:/20200314/113944_spectrum_vs_freq_and_temperature/113944_spectrum_vs_freq_and_temperature.dat"
-# ff = 'Q:/20200310/104139_drivingAmpl_vs_Spectrum/104139_drivingAmpl_vs_Spectrum.dat'
-# f4 = 'V:/20200403/114454_spectrum_vs_freq_and_temperature/114454_spectrum_vs_freq_and_temperature.dat'
 
-th = {'p1min': 10, 'p2max':84}
+if __name__ == '__main__':
 
-# initDict = {
-#                 'bg' : np.median(self.averagedData[n]['y']),
-#                 'center': self.averagedData[n]['x'][self.averagedData[n]['y'].index(max(self.averagedData[n]['y']))]-spl,
-#                 'sigma': sigma,
-#                 'amplitude': np.pi*sigma*np.max(self.averagedData[n]['y']),
-#                 'center2': self.averagedData[n]['x'][self.averagedData[n]['y'].index(max(self.averagedData[n]['y']))],
-#                 'sigma2': sigma,
-#                 'amplitude2': np.pi*sigma*np.max(self.averagedData[n]['y']),
-#                 'split': spl,
-#             }
+    # f2 = "V:/20200312/125553_spectrum_vs_freq_and_temperature/125553_spectrum_vs_freq_and_temperature.dat"
+    # f3 = "V:/20200314/113944_spectrum_vs_freq_and_temperature/113944_spectrum_vs_freq_and_temperature.dat"
+    # ff = 'Q:/20200310/104139_drivingAmpl_vs_Spectrum/104139_drivingAmpl_vs_Spectrum.dat'
+    # f4 = 'V:/20200403/114454_spectrum_vs_freq_and_temperature/114454_spectrum_vs_freq_and_temperature.dat'
 
-fit = TwoPeaksFit()
-# fit.plotData()
-fit.setInitParam(initDict=None, reverse = None, threshold=th, plotData = True)
-fit.setModelAndFit(plotData=True)
-fit.saveData()
+    th = {'p1min': 0, 'p2max':70}
+
+    # initDict = {
+    #                 'bg' : np.median(self.averagedData[n]['y']),
+    #                 'center': self.averagedData[n]['x'][self.averagedData[n]['y'].index(max(self.averagedData[n]['y']))]-spl,
+    #                 'sigma': sigma,
+    #                 'amplitude': np.pi*sigma*np.max(self.averagedData[n]['y']),
+    #                 'center2': self.averagedData[n]['x'][self.averagedData[n]['y'].index(max(self.averagedData[n]['y']))],
+    #                 'sigma2': sigma,
+    #                 'amplitude2': np.pi*sigma*np.max(self.averagedData[n]['y']),
+    #                 'split': spl,
+    #             }
+
+    # fit = TwoPeaksFit()
+    # # fit.plotData()
+    # fit.setInitParam(initDict=None, reverse = None, threshold=th, plotData = True)
+    # fit.setModelAndFit(plotData=True)
+    # fit.saveData()
